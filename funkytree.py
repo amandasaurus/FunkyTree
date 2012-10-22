@@ -37,7 +37,6 @@ def main(initial_state):
         state_change_funcs = [getattr(state, x) for x in dir(state) if getattr(getattr(state, x), 'is_state_change', False)]
         for state_change_func in state_change_funcs:
             destination_states = [getattr(__import__(state.__module__), x) for x in state_change_func.states]
-            #import pdb ; pdb.set_trace()
             for destination_state in destination_states:
                 if destination_state not in processed_states:
                     unprocessed_states.add(destination_state)
@@ -75,8 +74,13 @@ def main(initial_state):
 
 def _run_walks(walks):
 
+    failed_walks = set()
+
+    num_failed_walks = 0
+    num_success_walks = 0
+
     # Run the tests
-    for walk in sorted(walks, key=lambda x: len(x)):
+    for walk in sorted(walks, key=lambda x: (len(x), x)):
         assert len(walk) % 2 == 1
 
         walk_so_far = []
@@ -84,11 +88,16 @@ def _run_walks(walks):
         position_in_walk = 0
         state = walk[position_in_walk]()
 
+        walk_failed = False
 
         while True:
-                
             # how far have we gone?
             walk_so_far.append(state.__class__.__name__)
+
+            if tuple(walk_so_far) in failed_walks:
+                # Skip known failure
+                break
+                
 
             # run tests on this state
             for test in state._tests():
@@ -96,8 +105,11 @@ def _run_walks(walks):
                     test()
                 except Exception as ex:
                     # error
-                    print "Exception when going on walk {walk}".format(walk=" -> ".join(walk_so_far))
+                    failed_walks.add(tuple(walk_so_far))
+                    print "Test failure! Exception when going on {walk}".format(walk=" -> ".join(walk_so_far))
                     print ex
+                    walk_failed = True
+                    break
 
             # Everything OK, so let's take the next step
             position_in_walk += 1
@@ -107,5 +119,12 @@ def _run_walks(walks):
             state = getattr(state, func_name)()
             position_in_walk += 1
             walk_so_far.append(func_name)
+
+        if walk_failed:
+            num_failed_walks += 1
+        else:
+            num_success_walks += 1
+
+    print "Ran {0} test runs, {1} failed, {2} succeeded".format(num_failed_walks+num_success_walks, num_failed_walks, num_success_walks)
 
 
