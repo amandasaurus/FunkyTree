@@ -70,31 +70,42 @@ def main(initial_state):
                 unprocessed_walks.add(new_walk)
                 walks.add(new_walk)
 
+    _run_walks(walks)
+
+
+def _run_walks(walks):
 
     # Run the tests
-    for walk in walks:
+    for walk in sorted(walks, key=lambda x: len(x)):
+        assert len(walk) % 2 == 1
+
         walk_so_far = []
-        try:
-            state = walk[0]()
+
+        position_in_walk = 0
+        state = walk[position_in_walk]()
+
+
+        while True:
+                
+            # how far have we gone?
             walk_so_far.append(state.__class__.__name__)
 
             # run tests on this state
             for test in state._tests():
-                test()
-
-            for i in range(1, len(walk), 2):
-                func_name = walk[i]
-                state = getattr(state, func_name)()
-                walk_so_far.append(func_name)
-
-                # run tests on this state
-                for test in state._tests():
+                try:
                     test()
-        except Exception as ex:
-            print "Exception when going on walk {walk}".format(walk=" -> ".join(walk_so_far))
-            print ex
+                except Exception as ex:
+                    # error
+                    print "Exception when going on walk {walk}".format(walk=" -> ".join(walk_so_far))
+                    print ex
 
-        
-
+            # Everything OK, so let's take the next step
+            position_in_walk += 1
+            if position_in_walk >= len(walk):
+                break
+            func_name = walk[position_in_walk]
+            state = getattr(state, func_name)()
+            position_in_walk += 1
+            walk_so_far.append(func_name)
 
 
